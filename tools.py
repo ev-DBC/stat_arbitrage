@@ -1,7 +1,4 @@
-"""
-tools.py è la libreria contenente tutte le funzioni che vengono
-utilizzate all'interno del file Main.ipynb
-"""
+
 
 import numpy as np
 import pandas as pd
