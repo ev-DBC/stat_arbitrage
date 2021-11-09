@@ -15,7 +15,7 @@
 *   [`statisticalbootstrap`](#statisticalbootstrap)
 *   [`tradingStrategy`](#tradingStrategy)
 
-## Descrizione funzioni 
+## Functions description 
 *   <span id="rightdays">`rightdays (df, time_shift, datesIS, datesOS)`</span>
 
     This function sections the dataset into In Sample and Out of Sample taking as input the start and end dates of the two samples.
