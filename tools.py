@@ -1,4 +1,7 @@
-
+"""
+tools.py è la libreria contenente tutte le funzioni che vengono
+utilizzate all'interno del file Main.ipynb
+"""
 
 import numpy as np
 import pandas as pd
@@ -6,8 +9,66 @@ import scipy.integrate as integrate
 import scipy.optimize as opt
 import math
 from datetime import date
+import sklearn.linear_model
+from statsmodels.tsa.stattools import adfuller
 
 
+class basic_cointegrator:
+    slope=1
+    intercept=1
+    name1=''
+    name2=''
+    def __init__(self,asset1,asset2,name1,name2):
+        self.name1=name1
+        mod=sklearn.linear_model.LinearRegression(fit_intercept=True)
+        self.name2=name2
+        mod.fit(asset1.reshape(-1,1),asset2.reshape(-1,1))
+        self.slope=mod.coef_[0][0]
+        self.intercept=mod.intercept_[0]
+        
+    def plot(self,asset1,asset2,ax):
+   
+        ax.plot(asset1-self.slope*asset2-self.intercept)
+        ax.set_title(self.name1+' - '+str(np.round(self.slope,2))+' '+self.name2)
+        ax.grid()
+        
+    def return_asset(self,asset1,asset2,intercept_check=False,force_np=True):
+        if force_np:
+            if intercept_check:
+                return np.array(asset1-self.slope*asset2-self.intercept)
+            else:
+                return np.array(asset1-self.slope*asset2)
+        if intercept_check:
+            return asset1-self.slope*asset2-self.intercept
+        else:
+            return asset1-self.slope*asset2
+        
+class cointegrator(basic_cointegrator):
+    interval=0.2
+    grid=0.05
+    def __init__(self,asset1,asset2,name1,name2):
+        basic_cointegrator.__init__(self,asset1,asset2,name1,name2)
+        
+    def linear_refine(self,asset1,asset2,interval,grid):
+        self.interval=interval
+        self.grid=grid
+        
+        slope_range=np.arange(self.slope*(1-self.interval),self.slope*(1+self.interval),self.slope*self.grid)
+        ones=np.ones(slope_range.shape)
+        start_end_slopes=abs(ones*asset1[0]-slope_range*asset2[0]-(ones*asset1[-1:]-slope_range*asset2[-1:]))
+        self.slope=slope_range[np.argmin(start_end_slopes).astype('int')]
+        
+    def adf_optimizer(self,asset1,asset2,interval,grid):
+        print("This is gonna take some time...")
+        self.interval=interval
+        self.grid=grid
+        
+        slope_range=np.arange(self.slope*(1-self.interval),self.slope*(1+self.interval),self.slope*self.grid) 
+        time_series_range=[asset1-coeff*asset2 for coeff in slope_range]
+        p_values_range=[adfuller(time_serie)[1] for time_serie in time_series_range]
+        self.slope=slope_range[np.argmin(p_values_range).astype('int')]
+        
+        
 def rightdays(df,time_shift,datesIS,datesOS):
     df['new_col'] = df['Timestringnum'].apply(lambda x: str(int(x))[0:])
     df['new_col'] = df['new_col'].astype(int)
@@ -79,14 +140,15 @@ def costs(df):
 
 def long_run(loss, cost, theta, SIGMA, leverage, c):
     if leverage == -1:
-        band = opt.fmin(mu_opt, [1, 0], args=(loss, cost, theta, SIGMA, c))
+        band = opt.fmin(mu_opt, [1, 0], args=(loss, cost, theta, SIGMA, c),disp=0)
         optimallev = f_opt(band[0], band[1], loss, cost, theta, SIGMA, c)
         return [band,optimallev]
     else:
         band = opt.fmin(mu, [1, 0], args=(loss, cost, theta, SIGMA, leverage, c))
         return [band,leverage]
     
-#Functions section
+#####
+# Functions section
 
 def erfi(x):
     return integrate.quad(lambda t: 2 / np.sqrt(np.pi) * np.exp(t ** 2), 0, x)[0]
@@ -138,8 +200,8 @@ def mu_long(x, loss, cost, theta, SIGMA, leverage, c):
 
 def mu(x, loss, cost, theta, SIGMA, leverage, c):
     return -2 * float(mu_long(x, loss, cost, theta, SIGMA, leverage, c)) + 10000000000.0 * int(x[0] - x[1] < c) + 10000000000.0 * int(x[1] - loss < 0)
-
-###
+#
+#####
 
 def generateOU(k,eta,sigma,x0,dt,N_step):
     t_s = np.arange(0,dt*(N_step+1),dt)
